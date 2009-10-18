@@ -31,14 +31,12 @@ has 'url' => (
 has 'images' => (
     is       => 'rw',
     isa      => 'Maybe[Ref]',
-    #isa      => 'Str',
     lazy_build  => 1,
 );
 
 has 'steps' => (
     is       => 'ro',
     isa      => 'Maybe[Ref]',
-    #isa      => 'Str',
     lazy_build  => 1,
 );
 
@@ -119,13 +117,82 @@ has 'recipe_gourmet_yahoo_co_jp' => (
     }
 );
 
+has 'www_kyounoryouri_jp' => (
+    is      => 'ro',
+    isa     => 'Web::Scraper',
+    default => sub {
+        scraper {
+            process qq!#recipeImgFlame .recipe_img!, complete => '@src';
+            result 'complete', 'steps';
+        }
+    }
+);
+
+has 'www_recipe_nestle_co_jp' => (
+    is      => 'ro',
+    isa     => 'Web::Scraper',
+    default => sub {
+        scraper {
+            process qq!#Alltagshtmlplaceholdercontrol1 .mvbg p img!,
+                complete => '@src';
+            result 'complete', 'steps';
+        }
+    }
+);
+
+has 'www_bob-an_com' => (
+    is      => 'ro',
+    isa     => 'Web::Scraper',
+    default => sub {
+        scraper {
+            process qq!#recipe-detail p img!,
+                complete => '@src';
+            result 'complete', 'steps';
+        }
+    }
+);
+
+has 'www_yamasa_com' => (
+    is      => 'ro',
+    isa     => 'Web::Scraper',
+    default => sub {
+        scraper {
+            process qq!.m_recipe_details_1_2 img!,
+                complete => '@src';
+            process qq!.m_recipe_details_3_8 img!, 'steps[]' => '@src';
+            result 'complete', 'steps';
+        }
+    }
+);
+
 
 no Moose;
 
 __PACKAGE__->meta->make_immutable;
 
 
-our $VERSION = '0.0.1';
+our $VERSION = '0.0.3';
+
+sub _is_support {
+    my $self = shift;
+
+    my ($url) = ($self->url =~ m!
+                                ^http://
+                                (
+                                cookpad\.com/recipe/.+
+                                |erecipe\.woman\.excite\.co\.jp/detail/.+
+                                |www\.ajinomoto\.co\.jp/recipe/condition/menu/.+
+                                |www\.kewpie\.co\.jp/recipes/recipe/.+
+                                |www\.kikkoman\.co\.jp/homecook/search/.+
+                                |recipe\.gourmet\.yahoo\.co\.jp/[A-Z]\d+/
+                                |www\.kyounoryouri\.jp/recipe/\d+_.+\.html
+                                |www\.recipe\.nestle\.co\.jp/recipe/\d+_\d+/\d+
+                                |www\.bob\-an\.com/recipe/OutputMain\.asp\?KeyNo\=\d+
+                                |www\.yamasa\.com/mama/recipe/details/[^\.]+\.html
+                                )
+                                !x);
+    return $self->url->host if $url;
+}
 
 sub BUILD {
     my $self = shift;
@@ -154,23 +221,6 @@ sub _build_complete {
     $self->images->{complete} if $self->images->{complete};
 }
 
-sub _is_support {
-    my $self = shift;
-
-    my ($url) = ($self->url =~ m!
-                                ^http://
-                                (
-                                cookpad\.com/recipe/.+
-                                |erecipe\.woman\.excite\.co\.jp/detail/.+
-                                |www\.ajinomoto\.co\.jp/recipe/condition/menu/.+
-                                |www\.kewpie\.co\.jp/recipes/recipe/.+
-                                |www\.kikkoman\.co\.jp/homecook/search/.+
-                                |recipe\.gourmet\.yahoo\.co\.jp/[A-Z]\d+/
-                                )
-                                !x);
-    return $self->url->host if $url;
-}
-
 1;
 
 __END__
@@ -186,11 +236,11 @@ WWW::Recipe::Image - [One line description]
     use WWW::Recipe::Image;
     use Data::Dumper;
 
-    my $images = WWW::Recipe::Image->new(
+    my $recipe = WWW::Recipe::Image->new(
         url => 'http://cookpad.com/recipe/429493',
     );
-    my @image = $images->list;
-    print Dumper \@image;
+    my @images = $recipe->images;
+    print Dumper \@images;
 
 
 =head1 METHOD
